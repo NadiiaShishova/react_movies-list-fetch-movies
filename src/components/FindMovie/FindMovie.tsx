@@ -3,8 +3,6 @@ import './FindMovie.scss';
 import { getMovie } from '../../api';
 import { Movie } from '../../types/Movie';
 import { MovieCard } from '../MovieCard';
-// eslint-disable-next-line import/extensions
-import { ResponseError } from '../../types/ResponseError';
 import { normalizeMovie } from '../../utils/normalizeMovie';
 
 type Props = {
@@ -18,7 +16,7 @@ export const FindMovie: React.FC<Props> = ({ movies, onAddMovie }) => {
   const [error, setError] = useState('');
   const [previewMovie, setPreviewMovie] = useState<Movie | null>(null);
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!title.trim()) {
@@ -32,13 +30,22 @@ export const FindMovie: React.FC<Props> = ({ movies, onAddMovie }) => {
     try {
       const response = await getMovie(title.trim());
 
-      if ((response as ResponseError).Response === 'False') {
+      // Type guard без any
+      if ('Response' in response && response.Response === 'False') {
         setError("Can't find a movie with such a title");
 
         return;
       }
 
-      setPreviewMovie(normalizeMovie(response));
+      const movie = normalizeMovie(response);
+
+      // встановлюємо fallback poster прямо тут
+      if (!movie.poster || movie.poster === 'N/A') {
+        movie.poster =
+          'https://via.placeholder.com/360x270.png?text=no%20preview';
+      }
+
+      setPreviewMovie(movie);
     } finally {
       setIsLoading(false);
     }
