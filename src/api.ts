@@ -1,5 +1,6 @@
 import { MovieData } from './types/MovieData';
-import { ResponseError } from './types/ReponseError';
+// eslint-disable-next-line import/extensions
+import { ResponseError } from './types/ResponseError';
 
 const API_URL = 'https://www.omdbapi.com/?apikey=your-key';
 

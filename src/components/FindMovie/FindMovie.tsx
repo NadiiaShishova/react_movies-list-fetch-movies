@@ -1,10 +1,73 @@
-import React from 'react';
+import React, { useState } from 'react';
 import './FindMovie.scss';
+import { getMovie } from '../../api';
+import { Movie } from '../../types/Movie';
+import { MovieCard } from '../MovieCard';
+// eslint-disable-next-line import/extensions
+import { ResponseError } from '../../types/ResponseError';
+import { normalizeMovie } from '../../utils/normalizeMovie';
 
-export const FindMovie: React.FC = () => {
+type Props = {
+  movies: Movie[];
+  onAddMovie: React.Dispatch<React.SetStateAction<Movie[]>>;
+};
+
+export const FindMovie: React.FC<Props> = ({ movies, onAddMovie }) => {
+  const [title, setTitle] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [previewMovie, setPreviewMovie] = useState<Movie | null>(null);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+
+    if (!title.trim()) {
+      return;
+    }
+
+    setIsLoading(true);
+    setError('');
+    setPreviewMovie(null);
+
+    try {
+      const response = await getMovie(title.trim());
+
+      if ((response as ResponseError).Response === 'False') {
+        setError("Can't find a movie with such a title");
+
+        return;
+      }
+
+      setPreviewMovie(normalizeMovie(response));
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddMovie = () => {
+    if (!previewMovie) {
+      return;
+    }
+
+    const exists = movies.some(movie => movie.imdbId === previewMovie.imdbId);
+
+    if (!exists) {
+      onAddMovie(prev => [...prev, previewMovie]);
+    }
+
+    setTitle('');
+    setPreviewMovie(null);
+    setError('');
+  };
+
+  const handleTitleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(event.target.value);
+    setError('');
+  };
+
   return (
     <>
-      <form className="find-movie">
+      <form className="find-movie" onSubmit={handleSubmit}>
         <div className="field">
           <label className="label" htmlFor="movie-title">
             Movie title
@@ -16,13 +79,17 @@ export const FindMovie: React.FC = () => {
               type="text"
               id="movie-title"
               placeholder="Enter a title to search"
-              className="input is-danger"
+              className={`input ${error ? 'is-danger' : ''}`}
+              value={title}
+              onChange={handleTitleChange}
             />
           </div>
 
-          <p className="help is-danger" data-cy="errorMessage">
-            Can&apos;t find a movie with such a title
-          </p>
+          {error && (
+            <p className="help is-danger" data-cy="errorMessage">
+              {error}
+            </p>
+          )}
         </div>
 
         <div className="field is-grouped">
@@ -30,7 +97,8 @@ export const FindMovie: React.FC = () => {
             <button
               data-cy="searchButton"
               type="submit"
-              className="button is-light"
+              className={`button is-light ${isLoading ? 'is-loading' : ''}`}
+              disabled={!title.trim()}
             >
               Find a movie
             </button>
@@ -41,6 +109,8 @@ export const FindMovie: React.FC = () => {
               data-cy="addButton"
               type="button"
               className="button is-primary"
+              disabled={!previewMovie}
+              onClick={handleAddMovie}
             >
               Add to the list
             </button>
@@ -48,10 +118,12 @@ export const FindMovie: React.FC = () => {
         </div>
       </form>
 
-      <div className="container" data-cy="previewContainer">
-        <h2 className="title">Preview</h2>
-        {/* <MovieCard movie={movie} /> */}
-      </div>
+      {previewMovie && (
+        <div className="container" data-cy="previewContainer">
+          <h2 className="title">Preview</h2>
+          <MovieCard movie={previewMovie} />
+        </div>
+      )}
     </>
   );
 };
